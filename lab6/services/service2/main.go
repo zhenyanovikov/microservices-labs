@@ -1,0 +1,151 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+const service1URL = "http://service1:80"
+
+type Person struct {
+	ID   int
+	Name string
+}
+
+func main() {
+	// run http server with 4 CRUD endpoints
+	httpMux := http.NewServeMux()
+
+	prefix := "/service2"
+
+	isBroken := false
+
+	data := map[int]Person{
+		1: {
+			ID:   1,
+			Name: "John",
+		},
+		2: {
+			ID:   2,
+			Name: "Jane",
+		},
+		3: {
+			ID:   3,
+			Name: "Joe",
+		},
+	}
+
+	// test endpoint
+	httpMux.HandleFunc(prefix+"/test", func(w http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+
+		requestNum := 10
+
+		responses := make([]int, requestNum)
+
+		for i := 0; i < requestNum; i++ {
+			req, err := http.NewRequest("GET", service1URL+"/service1/health", nil)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			response, err := http.DefaultClient.Do(req)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			responses[i] = response.StatusCode
+		}
+
+		diff := int(time.Since(now).Seconds()) / requestNum
+
+		w.Write([]byte(fmt.Sprintf("Average response time: %d seconds; %v", diff, responses)))
+	})
+
+	httpMux.HandleFunc(prefix+"/broke", func(w http.ResponseWriter, r *http.Request) {
+		isBroken = true
+		w.Write([]byte("OK"))
+	})
+
+	httpMux.HandleFunc(prefix+"/create", func(w http.ResponseWriter, r *http.Request) {
+		checkBroken(isBroken)
+
+		name := r.URL.Query().Get("name")
+
+		data[len(data)+1] = Person{
+			ID:   len(data),
+			Name: name,
+		}
+
+		w.Write([]byte("OK"))
+	})
+
+	httpMux.HandleFunc(prefix+"/read", func(w http.ResponseWriter, r *http.Request) {
+		checkBroken(isBroken)
+
+		idStr := r.URL.Query().Get("id")
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil && idStr != "" {
+			return
+		}
+
+		var result string
+
+		if id != 0 {
+			result = data[id].Name
+		} else {
+			for key, person := range data {
+				result += fmt.Sprintf("%d) %s\n", key, person.Name)
+			}
+		}
+
+		w.Write([]byte(result))
+	})
+
+	httpMux.HandleFunc(prefix+"/update", func(w http.ResponseWriter, r *http.Request) {
+		checkBroken(isBroken)
+
+		idStr := r.URL.Query().Get("id")
+		name := r.URL.Query().Get("name")
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			panic(err)
+		}
+
+		data[id] = Person{
+			ID:   id,
+			Name: name,
+		}
+
+		w.Write([]byte("OK"))
+	})
+
+	httpMux.HandleFunc(prefix+"/delete", func(w http.ResponseWriter, r *http.Request) {
+		checkBroken(isBroken)
+
+		idStr := r.URL.Query().Get("id")
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			panic(err)
+		}
+
+		delete(data, id)
+
+		w.Write([]byte("OK"))
+	})
+
+	panic(http.ListenAndServe(":8080", httpMux))
+}
+
+func checkBroken(isBroken bool) {
+	if isBroken {
+		<-time.After(10 * time.Second)
+	}
+}

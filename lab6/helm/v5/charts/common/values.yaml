@@ -1,0 +1,23 @@
+replicaCount: 1
+
+nameOverride: ""
+
+image:
+  dockerNamespace: ""
+  name: ""
+  tag: ""
+
+service:
+  ports: []
+
+ingress:
+  path: /
+  port: http
+
+
+
+configs: {}
+
+secrets: {}
+
+common: {}

@@ -1,0 +1,13 @@
+postgresql:
+  global:
+    postgresql:
+      auth:
+        postgresPassword: "demo"
+        username: "demo"
+        password: "demo"
+        database: "demo"
+  fullnameOverride: "postgres"
+  primary:
+    persistence:
+      mountPath: /var/lib/postgresql/data
+      size: 2Gi
