@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: service1-virtual
+spec:
+  hosts:
+    - service1
+  http:
+    - route:
+        - destination:
+            host: service1
+      timeout: 2s
+      retries:
+        attempts: 1
+        retryOn: 5xx
+        perTryTimeout: 5s
